@@ -1,16 +1,130 @@
-# PixelForgeNexus
-PixelForge NexusPixelForge Nexus is a secure, full-stack project management application designed for creative studios. It features a robust, role-based backend API built with Node.js, Express, and MongoDB, and a responsive frontend built with React and Tailwind CSS. The system ensures data integrity and secure access through JWT authentication, role-based access control, and Multi-Factor Authentication (MFA).FeaturesThe application supports three distinct user roles with specific permissions:👑 Admin[cite_start]Project Management: Create new projects and mark existing projects as "Completed"[cite: 15, 16].[cite_start]User Management: Register new users (Project Leads, Developers) and assign their roles[cite: 26, 36].[cite_start]Document Management: Upload documents to any project[cite: 22, 26].[cite_start]View Access: View a list of all active projects[cite: 17].🧑‍💼 Project Lead[cite_start]Team Management: Assign developers to the specific projects they lead[cite: 19].[cite_start]Document Management: Upload documents to their assigned projects[cite: 22, 27].[cite_start]View Access: View a list of all active projects[cite: 17].💻 Developer[cite_start]Project Access: View a list of only the projects they are assigned to[cite: 20, 28].[cite_start]Document Access: View and download documents for their assigned projects[cite: 24, 28].🛡️ Security Features[cite_start]Secure Authentication: Passwords are hashed using bcryptjs[cite: 30].JWT Session Management: User sessions are managed with secure, short-lived JSON Web Tokens.Role-Based Access Control (RBAC): A middleware system protects all API endpoints, ensuring users can only perform actions permitted by their role.[cite_start]Multi-Factor Authentication (MFA): Users can enable Time-based One-Time Password (TOTP) for an extra layer of security[cite: 31, 44].Secure File Uploads: A secure file handling system stores documents with randomized names outside the web root.Technology StackBackend: Node.js, Express.jsFrontend: React.js, ViteDatabase: MongoDB with Mongoose ODMAuthentication: JSON Web Tokens (jsonwebtoken), bcryptjsMFA: speakeasy, qrcodeFile Handling: multerStyling: Tailwind CSSSetup and InstallationTo run this project locally, you will need to set up both the backend and frontend servers.Backend SetupNavigate to the Backend directory:cd Backend
-Install dependencies:npm install
-Create a .env file in the Backend root directory and add the following variables. Replace the placeholder with your MongoDB connection string.MONGO_URI=<Your MongoDB Atlas or Local Connection String>
+PixelForge Nexus
+PixelForge Nexus is a secure, full-stack project management application designed for creative studios. It features a robust, role-based backend API built with Node.js, Express, and MongoDB, and a responsive frontend built with React and Tailwind CSS. The system ensures data integrity and secure access through JWT authentication, role-based access control, and Multi-Factor Authentication (MFA).
+
+Features
+The application supports three distinct user roles with specific permissions:
+
+👑 Admin
+[cite_start]Project Management: Create new projects and mark existing projects as "Completed"[cite: 15, 16].
+
+[cite_start]User Management: Register new users (Project Leads, Developers) and assign their roles[cite: 26, 36].
+
+[cite_start]Document Management: Upload documents to any project[cite: 22, 26].
+
+[cite_start]View Access: View a list of all active projects[cite: 17].
+
+🧑‍💼 Project Lead
+[cite_start]Team Management: Assign developers to the specific projects they lead[cite: 19].
+
+[cite_start]Document Management: Upload documents to their assigned projects[cite: 22, 27].
+
+[cite_start]View Access: View a list of all active projects[cite: 17].
+
+💻 Developer
+[cite_start]Project Access: View a list of only the projects they are assigned to[cite: 20, 28].
+
+[cite_start]Document Access: View and download documents for their assigned projects[cite: 24, 28].
+
+🛡️ Security Features
+[cite_start]Secure Authentication: Passwords are hashed using bcryptjs[cite: 30].
+
+JWT Session Management: User sessions are managed with secure, short-lived JSON Web Tokens.
+
+Role-Based Access Control (RBAC): A middleware system protects all API endpoints, ensuring users can only perform actions permitted by their role.
+
+[cite_start]Multi-Factor Authentication (MFA): Users can enable Time-based One-Time Password (TOTP) for an extra layer of security[cite: 31, 44].
+
+Secure File Uploads: A secure file handling system stores documents with randomized names outside the web root.
+
+Technology Stack
+Backend: Node.js, Express.js
+
+Frontend: React.js, Vite
+
+Database: MongoDB with Mongoose ODM
+
+Authentication: JSON Web Tokens (jsonwebtoken), bcryptjs
+
+MFA: speakeasy, qrcode
+
+File Handling: multer
+
+Styling: Tailwind CSS
+
+Setup and Installation
+To run this project locally, you will need to set up both the backend and frontend servers.
+
+Backend Setup
+Navigate to the Backend directory:
+
+cd Backend
+
+Install dependencies:
+
+npm install
+
+Create a .env file in the Backend root directory and add the following variables. Replace the placeholder with your MongoDB connection string.
+
+MONGO_URI=<Your MongoDB Atlas or Local Connection String>
 PORT=5001
 JWT_SECRET=a_very_strong_and_long_secret_key
-Run the backend server:node server.js
-The API will be running at http://localhost:5001.Frontend SetupNavigate to the frontend directory:cd frontend
-Install dependencies:npm install
-Run the frontend development server:npm run dev
-The application will be accessible at http://localhost:5173 (or another port specified by Vite).API Usage & Testing (Postman)The backend API can be tested using an API client like Postman.Initial SetupBefore you can register users, you must manually add the three roles to your MongoDB roles collection:[
+
+Run the backend server:
+
+node server.js
+
+The API will be running at http://localhost:5001.
+
+Frontend Setup
+Navigate to the frontend directory:
+
+cd frontend
+
+Install dependencies:
+
+npm install
+
+Run the frontend development server:
+
+npm run dev
+
+The application will be accessible at http://localhost:5173 (or another port specified by Vite).
+
+API Usage & Testing (Postman)
+The backend API can be tested using an API client like Postman.
+
+Initial Setup
+Before you can register users, you must manually add the three roles to your MongoDB roles collection:
+
+[
     { "name": "Admin" },
     { "name": "Project Lead" },
     { "name": "Developer" }
 ]
-Authentication FlowRegister Users (Admin Only):POST /api/auth/registerRequires an Admin's JWT in the Authorization: Bearer <token> header.Body: { "username": "...", "email": "...", "password": "...", "roleName": "..." }Login:POST /api/auth/loginBody: { "username": "...", "password": "..." }Returns a JWT token. If MFA is enabled, it returns { "mfaRequired": true, "userId": "..." }.MFA Login Verification (if required):POST /api/auth/verify-loginBody: { "userId": "...", "token": "..." }Returns the final JWT token.All protected endpoints require the JWT to be sent in the Authorization: Bearer <token> header.
+
+Authentication Flow
+Register Users (Admin Only):
+
+POST /api/auth/register
+
+Requires an Admin's JWT in the Authorization: Bearer <token> header.
+
+Body: { "username": "...", "email": "...", "password": "...", "roleName": "..." }
+
+Login:
+
+POST /api/auth/login
+
+Body: { "username": "...", "password": "..." }
+
+Returns a JWT token. If MFA is enabled, it returns { "mfaRequired": true, "userId": "..." }.
+
+MFA Login Verification (if required):
+
+POST /api/auth/verify-login
+
+Body: { "userId": "...", "token": "..." }
+
+Returns the final JWT token.
+
+All protected endpoints require the JWT to be sent in the Authorization: Bearer <token> header.
