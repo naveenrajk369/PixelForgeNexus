@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PixelForge Nexus - Interactive Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- 
+    Chosen Palette: Calm Harmony (Warm neutrals with a subtle blue accent)
+    Application Structure Plan: A dashboard-style Single Page Application (SPA). The core structure is a main view that dynamically changes based on the selected user role (Admin, Project Lead, Developer) via a role-switcher. This structure was chosen because the source report's primary focus is on privilege separation and role-based functionality. An interactive role-switcher is the most effective way to make these abstract rules tangible and explorable for a user. The user flow is: 1) View the overall dashboard. 2) Switch roles to see how permissions and visible elements change. 3) Click on a project to "drill down" into a details view, which also respects the current role's permissions. This non-linear, interactive approach is superior to a static report for understanding the system's rules.
+    Visualization & Content Choices: 
+    - Report Info: Project status (Active/Completed). Goal: Inform at a glance. Viz/Method: Donut Chart (Chart.js). Interaction: Tooltips on hover. Justification: Provides a quick, high-level visual summary of project progress.
+    - Report Info: List of projects. Goal: Organize & Compare. Viz/Method: Interactive Cards (HTML/Tailwind). Interaction: Click to view details. Justification: More visually engaging and scannable than a simple table.
+    - Report Info: Role-based permissions. Goal: Compare & Inform. Viz/Method: Dynamic UI elements (Buttons, Lists). Interaction: A master role-switcher that hides/shows elements. Justification: This is the core interactive feature, directly translating the report's main theme (privilege separation) into a tangible experience.
+    - Report Info: Team members and documents. Goal: Organize. Viz/Method: Styled Lists (HTML/Tailwind). Interaction: Download buttons for documents. Justification: Clear and straightforward presentation for detailed information.
+    CONFIRMATION: NO SVG graphics used. NO Mermaid JS used.
+    -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FDFBF8; /* Warm neutral background */
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 300px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 300px;
+        }
+        .btn-role.active {
+            background-color: #3B82F6;
+            color: white;
+            box-shadow: 0 4px 14px 0 rgb(0 118 255 / 39%);
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div id="app" class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+        
+        <!-- Header -->
+        <header class="mb-8">
+            <h1 class="text-4xl font-bold text-gray-900">PixelForge Nexus</h1>
+            <p class="text-lg text-gray-500 mt-1">Interactive System Dashboard</p>
+        </header>
+
+        <!-- Role Switcher -->
+        <div class="mb-8 p-4 bg-white rounded-2xl shadow-sm border border-gray-200">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between">
+                <div class="mb-4 sm:mb-0">
+                    <h2 class="text-lg font-semibold text-gray-700">Simulate User Role</h2>
+                    <p class="text-sm text-gray-500">Select a role to see how the dashboard and permissions change.</p>
+                </div>
+                <div id="role-switcher" class="flex items-center space-x-2 bg-gray-100 p-1.5 rounded-xl">
+                    <button data-role="Admin" class="btn-role px-4 py-2 text-sm font-semibold rounded-lg transition-colors">Admin</button>
+                    <button data-role="Project Lead" class="btn-role px-4 py-2 text-sm font-semibold rounded-lg transition-colors">Project Lead</button>
+                    <button data-role="Developer" class="btn-role px-4 py-2 text-sm font-semibold rounded-lg transition-colors">Developer</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <main id="main-content">
+            <!-- This will be populated by JavaScript -->
+        </main>
+
+    </div>
+
+    <script>
+        // --- DATA STORE ---
+        const users = [
+            { id: 1, name: 'Eleanor Vance', role: 'Admin' },
+            { id: 2, name: 'Marcus Thorne', role: 'Project Lead' },
+            { id: 3, name: 'Seraphina Chen', role: 'Project Lead' },
+            { id: 4, name: 'Leo Rivera', role: 'Developer' },
+            { id: 5, name: 'Aria Kim', role: 'Developer' },
+            { id: 6, name: 'Julian Sato', role: 'Developer' },
+        ];
+
+        const projects = [
+            { id: 1, name: 'Project "Aetherion"', description: 'Next-gen open-world RPG with dynamic weather systems.', status: 'Active', leadId: 2, teamIds: [4, 5] },
+            { id: 2, name: 'Project "Chrono Shift"', description: 'A time-bending puzzle platformer for mobile devices.', status: 'Active', leadId: 3, teamIds: [6] },
+            { id: 3, name: 'Project "Odyssey"', description: 'Completed narrative-driven space exploration game.', status: 'Completed', leadId: 2, teamIds: [4] },
+        ];
+
+        const documents = [
+            { id: 1, projectId: 1, name: 'Game Design Document.pdf', uploadedBy: 1 },
+            { id: 2, projectId: 1, name: 'Character Concepts.zip', uploadedBy: 2 },
+            { id: 3, projectId: 2, name: 'Level 1-3 Blueprints.pdf', uploadedBy: 3 },
+            { id: 4, projectId: 3, name: 'Final Marketing Report.docx', uploadedBy: 1 },
+        ];
+
+        // --- APPLICATION STATE ---
+        let state = {
+            currentRole: 'Admin',
+            currentView: 'dashboard', // 'dashboard' or 'projectDetails'
+            selectedProjectId: null,
+        };
+
+        // --- DOM ELEMENTS ---
+        const mainContent = document.getElementById('main-content');
+        const roleSwitcher = document.getElementById('role-switcher');
+
+        // --- CHART INSTANCE ---
+        let projectStatusChart = null;
+
+        // --- RENDER FUNCTIONS ---
+
+        function renderDashboard() {
+            const visibleProjects = getVisibleProjects(state.currentRole);
+            const canAddProjects = state.currentRole === 'Admin';
+            const activeProjects = projects.filter(p => p.status === 'Active').length;
+            const completedProjects = projects.filter(p => p.status === 'Completed').length;
+
+            mainContent.innerHTML = `
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-2">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-2xl font-bold text-gray-800">Active Projects</h2>
+                            ${canAddProjects ? `<button class="bg-blue-500 text-white font-semibold px-4 py-2 rounded-lg shadow-sm hover:bg-blue-600 transition-colors">Add Project</button>` : ''}
+                        </div>
+                        <div id="project-list" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Project cards will be inserted here -->
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Project Status</h2>
+                        <div class="chart-container">
+                            <canvas id="projectStatusChart"></canvas>
+                        </div>
+                        <div class="mt-6 text-center text-sm text-gray-600">
+                            <p><span class="font-bold">${activeProjects}</span> Active Projects</p>
+                            <p><span class="font-bold">${completedProjects}</span> Completed Projects</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const projectList = document.getElementById('project-list');
+            if (visibleProjects.length > 0) {
+                visibleProjects.forEach(project => {
+                    projectList.innerHTML += createProjectCard(project);
+                });
+            } else {
+                projectList.innerHTML = `<p class="text-gray-500 md:col-span-2">No projects assigned or visible for this role.</p>`;
+            }
+            
+            addProjectCardListeners();
+            renderChart(activeProjects, completedProjects);
+        }
+
+        function renderProjectDetails(projectId) {
+            const project = projects.find(p => p.id === projectId);
+            if (!project) {
+                state.currentView = 'dashboard';
+                render();
+                return;
+            }
+
+            const projectLead = users.find(u => u.id === project.leadId);
+            const teamMembers = users.filter(u => project.teamIds.includes(u.id));
+            const projectDocs = documents.filter(d => d.projectId === project.id);
+            
+            const canManageTeam = state.currentRole === 'Project Lead' && state.currentRole === projectLead.role;
+            const canUploadDocs = ['Admin', 'Project Lead'].includes(state.currentRole);
+            const canMarkComplete = state.currentRole === 'Admin';
+
+            mainContent.innerHTML = `
+                <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
+                    <button id="back-to-dashboard" class="text-blue-500 font-semibold text-sm mb-6 hover:underline">&larr; Back to Dashboard</button>
+                    <div class="flex flex-col md:flex-row justify-between md:items-start mb-6">
+                        <div>
+                            <h2 class="text-3xl font-bold text-gray-800">${project.name}</h2>
+                            <p class="text-gray-500 mt-1">${project.description}</p>
+                            <span class="mt-2 inline-block text-xs font-semibold px-2 py-1 rounded-full ${project.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">${project.status}</span>
+                        </div>
+                        <div class="flex space-x-2 mt-4 md:mt-0">
+                            ${canUploadDocs ? `<button class="bg-gray-200 text-gray-700 font-semibold px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors">Upload Document</button>` : ''}
+                            ${canMarkComplete && project.status === 'Active' ? `<button class="bg-red-500 text-white font-semibold px-4 py-2 rounded-lg hover:bg-red-600 transition-colors">Mark as Completed</button>` : ''}
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mt-8">
+                        <!-- Team Members -->
+                        <div>
+                            <h3 class="font-bold text-lg mb-3">Team Members</h3>
+                            <div class="space-y-3">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 bg-blue-200 rounded-full flex-shrink-0"></div>
+                                    <div>
+                                        <p class="font-semibold">${projectLead.name}</p>
+                                        <p class="text-sm text-gray-500">Project Lead</p>
+                                    </div>
+                                </div>
+                                ${teamMembers.map(member => `
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-10 h-10 bg-indigo-200 rounded-full flex-shrink-0"></div>
+                                        <div>
+                                            <p class="font-semibold">${member.name}</p>
+                                            <p class="text-sm text-gray-500">${member.role}</p>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            ${canManageTeam ? `<button class="mt-4 w-full bg-blue-100 text-blue-700 font-semibold px-4 py-2 rounded-lg hover:bg-blue-200 transition-colors text-sm">Assign Member</button>` : ''}
+                        </div>
+                        <!-- Documents -->
+                        <div class="md:col-span-2">
+                             <h3 class="font-bold text-lg mb-3">Project Documents</h3>
+                             <div class="space-y-2">
+                                ${projectDocs.length > 0 ? projectDocs.map(doc => `
+                                    <div class="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                        <p class="font-medium text-sm">${doc.name}</p>
+                                        <button class="text-blue-500 font-semibold text-sm hover:underline">Download</button>
+                                    </div>
+                                `).join('') : '<p class="text-gray-500 text-sm">No documents uploaded for this project.</p>'}
+                             </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('back-to-dashboard').addEventListener('click', () => {
+                state.currentView = 'dashboard';
+                state.selectedProjectId = null;
+                render();
+            });
+        }
+
+        function createProjectCard(project) {
+            return `
+                <div data-project-id="${project.id}" class="project-card bg-white p-6 rounded-2xl shadow-sm border border-gray-200 cursor-pointer hover:shadow-lg hover:border-blue-400 transition-all transform hover:-translate-y-1">
+                    <div class="flex justify-between items-start">
+                        <h3 class="font-bold text-lg">${project.name}</h3>
+                        <span class="text-xs font-semibold px-2 py-1 rounded-full ${project.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">${project.status}</span>
+                    </div>
+                    <p class="text-sm text-gray-600 mt-2">${project.description}</p>
+                </div>
+            `;
+        }
+        
+        function renderChart(active, completed) {
+             const ctx = document.getElementById('projectStatusChart');
+             if (!ctx) return;
+             
+             if (projectStatusChart) {
+                projectStatusChart.destroy();
+             }
+
+             projectStatusChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Active', 'Completed'],
+                    datasets: [{
+                        data: [active, completed],
+                        backgroundColor: ['#3B82F6', '#E5E7EB'],
+                        borderColor: ['#FFFFFF'],
+                        borderWidth: 4,
+                        hoverOffset: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '75%',
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            enabled: true,
+                            backgroundColor: '#1F2937',
+                            titleFont: { size: 14, weight: 'bold' },
+                            bodyFont: { size: 12 },
+                            padding: 10,
+                            cornerRadius: 8,
+                            displayColors: false,
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- LOGIC & EVENT HANDLERS ---
+
+        function getVisibleProjects(role) {
+            if (role === 'Admin' || role === 'Project Lead') {
+                return projects.filter(p => p.status === 'Active');
+            }
+            if (role === 'Developer') {
+                // Find which user is the "current" developer for simulation
+                const developerUser = users.find(u => u.role === 'Developer');
+                return projects.filter(p => p.teamIds.includes(developerUser.id) && p.status === 'Active');
+            }
+            return [];
+        }
+
+        function handleRoleChange(e) {
+            const newRole = e.target.dataset.role;
+            if (newRole && newRole !== state.currentRole) {
+                state.currentRole = newRole;
+                state.currentView = 'dashboard';
+                state.selectedProjectId = null;
+                render();
+            }
+        }
+        
+        function addProjectCardListeners() {
+            document.querySelectorAll('.project-card').forEach(card => {
+                card.addEventListener('click', (e) => {
+                    const projectId = parseInt(e.currentTarget.dataset.projectId, 10);
+                    state.currentView = 'projectDetails';
+                    state.selectedProjectId = projectId;
+                    render();
+                });
+            });
+        }
+        
+        function updateRoleSwitcherUI() {
+            document.querySelectorAll('.btn-role').forEach(btn => {
+                if (btn.dataset.role === state.currentRole) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // --- MAIN RENDER FUNCTION ---
+        function render() {
+            if (state.currentView === 'dashboard') {
+                renderDashboard();
+            } else if (state.currentView === 'projectDetails') {
+                renderProjectDetails(state.selectedProjectId);
+            }
+            updateRoleSwitcherUI();
+        }
+
+        // --- INITIALIZATION ---
+        roleSwitcher.addEventListener('click', handleRoleChange);
+        render(); // Initial render
+
+    </script>
+</body>
+</html>
